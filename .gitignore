@@ -1,0 +1,33 @@
+# Environment & secrets
+.env
+.streamlit/secrets.toml
+
+# Storage (contains pairing history — keep a manual backup)
+coffee_chat_storage.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
