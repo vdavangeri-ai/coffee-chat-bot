@@ -299,7 +299,6 @@ def _init_state():
         "channel": "analytics-all",
         "roster_bytes": None,
         "roster_name": "",
-        "storage_data": None,
         "run_log": [],
     }
     for k, v in defaults.items():
@@ -310,20 +309,15 @@ _init_state()
 
 
 # ── Storage helpers ────────────────────────────────────────────────────────────
-def _load_storage_from_session():
-    """Load storage.json from session state if user uploaded it."""
-    from storage import STORAGE_FILE
-    if st.session_state.storage_data:
-        with open(STORAGE_FILE, "w") as f:
-            json.dump(st.session_state.storage_data, f, indent=2)
-
-
 def _read_storage() -> dict:
-    from storage import STORAGE_FILE
-    if os.path.exists(STORAGE_FILE):
-        with open(STORAGE_FILE) as f:
-            return json.load(f)
-    return {"pairs_history": {}, "active_channels": {}}
+    """Always read live from GitHub (or disk fallback)."""
+    from storage import Storage
+    return Storage().data
+
+
+def _storage_backend_label() -> str:
+    from storage import _github_creds
+    return "GitHub 🟢" if _github_creds() else "Local only 🔴 (resets on reboot)"
 
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
@@ -354,14 +348,6 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
-    st.markdown("---")
-    st.markdown("**💾 Storage File** *(optional)*")
-    st.caption("Upload your previous `coffee_chat_storage.json` to restore history.")
-    storage_file = st.file_uploader(
-        "Storage JSON", type=["json"],
-        label_visibility="collapsed",
-    )
-
     if st.button("✅ Save Configuration", use_container_width=True):
         if not token_input:
             st.error("Please enter your Slack Bot Token.")
@@ -372,26 +358,17 @@ with st.sidebar:
             st.session_state.channel = channel_input.strip().lstrip("#") or "analytics-all"
             st.session_state.roster_bytes = roster_file.read()
             st.session_state.roster_name = roster_file.name
-            if storage_file:
-                st.session_state.storage_data = json.load(storage_file)
-                _load_storage_from_session()
             st.session_state.configured = True
-            _get_bot.clear()  # Clear cache so new bot is built
+            _get_bot.clear()
             st.success("Configuration saved!")
             st.rerun()
 
     st.markdown("---")
-    # Storage download
-    storage_data = _read_storage()
-    storage_json = json.dumps(storage_data, indent=2)
-    st.download_button(
-        "⬇️ Download Storage Backup",
-        data=storage_json,
-        file_name="coffee_chat_storage.json",
-        mime="application/json",
-        use_container_width=True,
-    )
-    st.caption("Back this up after each run to preserve history.")
+    st.markdown("**💾 Memory Storage**")
+    backend_label = _storage_backend_label()
+    st.caption(f"Backend: {backend_label}")
+    if "Local only" in backend_label:
+        st.warning("⚠️ Add GitHub secrets to make memory permanent — see Setup Guide.")
 
 
 # ── Header ─────────────────────────────────────────────────────────────────────
